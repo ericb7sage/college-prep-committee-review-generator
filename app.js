@@ -2,7 +2,9 @@ const NARRATIVE_MAX_CHARS = 500;
 const EMPTY_PLACEHOLDER = "Not provided";
 const PDF_WORKSPACE_WIDTH = 612;
 const PDF_WORKSPACE_HEIGHT = 792;
-const LOGO_ASSET_PATH = "./assets/logo-7sage-b2r2.svg";
+const SHEET_CONTENT_WIDTH = 512;
+const EMBEDDED_ASSETS = window.__EMBEDDED_ASSETS__ || {};
+const LOGO_ASSET_PATH = EMBEDDED_ASSETS.logo7sage || "./assets/logo-7sage-b2r2.svg";
 const PDF_FOOTER_TEXT =
   "If you have any questions, email collegeprep@7sage.com, or visit college.7sage.com";
 
@@ -13,8 +15,7 @@ const READER_PROFILES = [
     fullName: "Jen Kott",
     firstName: "Jen",
     aliases: ["Jen Kott", "Jennifer Kott", "Jen", "Jennifer"],
-    headshotUrl:
-      "https://www.gravatar.com/avatar/29d0502c4ea11721ff29d3d1fa1c3bdd?size=320&default=robohash",
+    headshotUrl: EMBEDDED_ASSETS.jenKottHeadshot || "./assets/jen-kott.png",
     bio:
       "Former AO at Northwestern, Tulane, & UNC Chapel Hill. Former Director of Admissions at Arizona Law.",
   },
@@ -22,8 +23,7 @@ const READER_PROFILES = [
     fullName: "Jake Baska",
     firstName: "Jake",
     aliases: ["Jake Baska", "Jacob Baska", "Jacob", "Jake"],
-    headshotUrl:
-      "https://www.gravatar.com/avatar/078822ac5e3142951af136795491c23c?size=320&default=robohash",
+    headshotUrl: EMBEDDED_ASSETS.jakeBaskaHeadshot || "./assets/jake-baska.jpeg",
     bio:
       "Former Director of Admissions at Notre Dame Law. Host of the 7Sage Admissions Podcast.",
   },
@@ -31,8 +31,7 @@ const READER_PROFILES = [
     fullName: "Kamil Brown",
     firstName: "Kamil",
     aliases: ["Kamil Brown", "Kamil"],
-    headshotUrl:
-      "https://www.gravatar.com/avatar/f3e721c5dc9708ebc13125ecd0db7716?size=320&default=robohash",
+    headshotUrl: EMBEDDED_ASSETS.kamilBrownHeadshot || "./assets/kamil-brown.png",
     bio: "Former Yale Law AO. Former admissions reader at Fordham Law.",
   },
   {
@@ -116,9 +115,9 @@ const SECTION_STYLES = {
 };
 
 const PDF_THEME = {
-  pageBackground: [235, 237, 240],
-  headerBackground: [113, 124, 149],
-  headerText: [244, 245, 247],
+  pageBackground: [252, 252, 252],
+  headerBackground: [241, 237, 233],
+  headerText: [0, 0, 0],
   badgeFill: [247, 208, 113],
   badgeText: [16, 35, 63],
   metaFill: [255, 255, 255],
@@ -194,6 +193,14 @@ function getInitials(profile) {
   return `${first}${last}`.toUpperCase() || "?";
 }
 
+function resolveAssetUrl(path) {
+  return new URL(String(path || ""), window.location.href).href;
+}
+
+function isRemoteHttpUrl(value) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
 function ensurePdfLogoData() {
   if (pdfLogoCache) return Promise.resolve(pdfLogoCache);
   if (pdfLogoLoadPromise) return pdfLogoLoadPromise;
@@ -221,7 +228,7 @@ function ensurePdfLogoData() {
       }
     };
     image.onerror = () => resolve(null);
-    image.src = LOGO_ASSET_PATH;
+    image.src = resolveAssetUrl(LOGO_ASSET_PATH);
   }).finally(() => {
     pdfLogoLoadPromise = null;
   });
@@ -324,10 +331,15 @@ function createReaderCard(readerKey) {
   avatar.className = "reader-avatar";
   if (profile?.headshotUrl) {
     const img = document.createElement("img");
-    img.src = profile.headshotUrl;
+    img.src = resolveAssetUrl(profile.headshotUrl);
     img.alt = profile.fullName;
-    img.loading = "lazy";
+    img.loading = "eager";
+    if (isRemoteHttpUrl(profile.headshotUrl)) {
+      img.crossOrigin = "anonymous";
+      img.referrerPolicy = "no-referrer";
+    }
     img.addEventListener("error", () => {
+      console.warn("Headshot failed to load:", profile.headshotUrl);
       avatar.replaceChildren();
       const initials = document.createElement("span");
       initials.className = "reader-initials";
@@ -399,7 +411,7 @@ function renderPreview() {
   brand.className = "brand-lockup";
   const logo = document.createElement("img");
   logo.className = "brand-logo";
-  logo.src = LOGO_ASSET_PATH;
+  logo.src = resolveAssetUrl(LOGO_ASSET_PATH);
   logo.alt = "7Sage";
   logo.loading = "eager";
   brand.appendChild(logo);
@@ -411,10 +423,13 @@ function renderPreview() {
 
   const title = document.createElement("h2");
   title.className = "sheet-title";
-  title.innerHTML = "Admissions<br />Committee Review";
+  title.textContent = "Committee Review";
 
-  header.appendChild(brand);
-  header.appendChild(title);
+  const headerStack = document.createElement("div");
+  headerStack.className = "sheet-header-stack";
+  headerStack.appendChild(brand);
+  headerStack.appendChild(title);
+  header.appendChild(headerStack);
 
   const metaRow = document.createElement("section");
   metaRow.className = "sheet-meta-row";
@@ -469,8 +484,8 @@ function ensurePdfLibAvailable() {
 function getPdfLayout(doc) {
   const pageWidth = PDF_WORKSPACE_WIDTH;
   const pageHeight = PDF_WORKSPACE_HEIGHT;
-  const pagePaddingX = 38;
-  const contentWidth = pageWidth - pagePaddingX * 2;
+  const pagePaddingX = (pageWidth - SHEET_CONTENT_WIDTH) / 2;
+  const contentWidth = SHEET_CONTENT_WIDTH;
   const headerHeight = 64;
   const metaY = 78;
   const metaHeight = 34;
@@ -540,7 +555,7 @@ function truncateTextToWidth(doc, text, maxWidth) {
 
 function drawMetaPills(doc, layout) {
   const pillGap = 10;
-  const widths = [162, 52, 52, 216];
+  const widths = [162, 72, 72, 176];
   const totalRowWidth = widths.reduce((sum, width) => sum + width, 0) + pillGap * 3;
   const rowStartX = layout.pagePaddingX + (layout.contentWidth - totalRowWidth) / 2;
 
@@ -628,8 +643,10 @@ function drawPageChrome(doc, layout, logoData) {
   doc.setFillColor(...PDF_THEME.headerBackground);
   doc.rect(0, 0, layout.pageWidth, layout.headerHeight, "F");
 
+  const headerCenterX = layout.pagePaddingX + layout.contentWidth / 2;
+  const headerLine1Y = 31;
+  const headerLine2Y = 42;
   const badgeX = layout.pagePaddingX;
-  const badgeY = 14;
   const logoHeight = 24;
   let logoWidth = 78;
 
@@ -637,30 +654,37 @@ function drawPageChrome(doc, layout, logoData) {
     logoWidth = Math.max(40, Math.min(180, logoHeight * logoData.aspectRatio));
   }
 
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(...PDF_THEME.headerText);
+  const brandText = "College Prep";
+  const brandGap = 7;
+  const brandTextWidth = doc.getTextWidth(brandText);
+  const brandTotalWidth = logoWidth + brandGap + brandTextWidth;
+  const brandStartX = headerCenterX - brandTotalWidth / 2;
+  const badgeY = Math.round(headerLine1Y - 17);
+
   if (logoData?.dataUrl) {
-    doc.addImage(logoData.dataUrl, "PNG", badgeX, badgeY, logoWidth, logoHeight);
+    doc.addImage(logoData.dataUrl, "PNG", brandStartX, badgeY, logoWidth, logoHeight);
   } else {
     const badgeW = 94;
     doc.setFillColor(...PDF_THEME.badgeFill);
-    doc.roundedRect(badgeX, badgeY, badgeW, logoHeight, 8, 8, "F");
+    doc.roundedRect(brandStartX, badgeY, badgeW, logoHeight, 8, 8, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(...PDF_THEME.badgeText);
-    doc.text("7sage", badgeX + 7, badgeY + 17);
+    doc.text("7sage", brandStartX + 7, badgeY + 17);
     logoWidth = badgeW;
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(20);
   doc.setTextColor(...PDF_THEME.headerText);
-  doc.text("College Prep", badgeX + logoWidth + 7, badgeY + 17);
+  doc.text(brandText, brandStartX + logoWidth + brandGap, headerLine1Y);
 
   doc.setFont("times", "bold");
-  doc.setFontSize(16);
-  doc.text(["Admissions", "Committee Review"], layout.pageWidth - layout.pagePaddingX, 22, {
-    align: "right",
-    lineHeightFactor: 1.08,
-  });
+  doc.setFontSize(20);
+  doc.text("Committee Review", headerCenterX, headerLine2Y, { align: "center" });
 
   drawMetaPills(doc, layout);
   drawReaderCards(doc, layout);
@@ -739,10 +763,154 @@ function drawSectionBlock(doc, layout, sectionKey, lines, startIndex, y, height,
   return consumed;
 }
 
-async function generatePdf() {
-  if (!ensurePdfLibAvailable()) return;
-  setStatus("Generating PDF...");
+async function waitForImages(root) {
+  if (!root) return;
+  const images = [...root.querySelectorAll("img")];
+  if (!images.length) return;
 
+  await Promise.all(
+    images.map((image) => {
+      if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          resolve();
+        };
+        image.addEventListener("load", finish, { once: true });
+        image.addEventListener("error", finish, { once: true });
+        if (typeof image.decode === "function") {
+          image.decode().then(finish).catch(() => {});
+        }
+        setTimeout(finish, 1600);
+      });
+    })
+  );
+}
+
+function inlineCloneImagesFromSource(sourceRoot, cloneRoot) {
+  const sourceImages = [...sourceRoot.querySelectorAll("img")];
+  const cloneImages = [...cloneRoot.querySelectorAll("img")];
+  const count = Math.min(sourceImages.length, cloneImages.length);
+
+  for (let i = 0; i < count; i += 1) {
+    const sourceImage = sourceImages[i];
+    const cloneImage = cloneImages[i];
+    if (!sourceImage || !cloneImage) continue;
+    if (!sourceImage.complete || sourceImage.naturalWidth <= 0 || sourceImage.naturalHeight <= 0) continue;
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = sourceImage.naturalWidth;
+      canvas.height = sourceImage.naturalHeight;
+      const context = canvas.getContext("2d");
+      if (!context) continue;
+      context.drawImage(sourceImage, 0, 0);
+      cloneImage.src = canvas.toDataURL("image/png");
+    } catch (_error) {
+      // Keep original src when inlining fails.
+    }
+  }
+}
+
+async function capturePreviewSheetToImage() {
+  const sourceSheet = previewContent.querySelector(".review-sheet");
+  if (!sourceSheet) {
+    throw new Error("No preview sheet available.");
+  }
+
+  const hasHtmlToImage = typeof window.htmlToImage?.toPng === "function";
+  const hasHtml2Canvas = typeof window.html2canvas === "function";
+  if (!hasHtmlToImage && !hasHtml2Canvas) {
+    throw new Error("No preview capture library available.");
+  }
+
+  const staging = document.createElement("div");
+  staging.style.position = "fixed";
+  staging.style.left = "-10000px";
+  staging.style.top = "0";
+  staging.style.width = `${PDF_WORKSPACE_WIDTH}px`;
+  staging.style.height = `${PDF_WORKSPACE_HEIGHT}px`;
+  staging.style.overflow = "hidden";
+  staging.style.pointerEvents = "none";
+  staging.style.opacity = "1";
+  staging.style.zIndex = "-1";
+
+  const clone = sourceSheet.cloneNode(true);
+  clone.classList.add("pdf-export-root");
+  clone.style.width = `${PDF_WORKSPACE_WIDTH}px`;
+  clone.style.height = `${PDF_WORKSPACE_HEIGHT}px`;
+  clone.style.maxWidth = "none";
+  clone.style.maxHeight = "none";
+  clone.style.margin = "0";
+  staging.appendChild(clone);
+  document.body.appendChild(staging);
+
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await waitForImages(sourceSheet);
+    inlineCloneImagesFromSource(sourceSheet, clone);
+    await waitForImages(clone);
+
+    const isFileProtocol = window.location.protocol === "file:";
+
+    let html2CanvasError = null;
+    if (hasHtml2Canvas) {
+      try {
+        const canvas = await window.html2canvas(clone, {
+          scale: 2,
+          useCORS: !isFileProtocol,
+          allowTaint: isFileProtocol,
+          backgroundColor: "#fcfcfc",
+          width: PDF_WORKSPACE_WIDTH,
+          height: PDF_WORKSPACE_HEIGHT,
+          windowWidth: PDF_WORKSPACE_WIDTH,
+          windowHeight: PDF_WORKSPACE_HEIGHT,
+          x: 0,
+          y: 0,
+          scrollX: 0,
+          scrollY: 0,
+          logging: false,
+        });
+        return canvas.toDataURL("image/png");
+      } catch (error) {
+        html2CanvasError = error;
+      }
+    }
+
+    let htmlToImageError = null;
+    if (hasHtmlToImage) {
+      try {
+        return await window.htmlToImage.toPng(clone, {
+          pixelRatio: 2,
+          cacheBust: !isFileProtocol,
+          backgroundColor: "#fcfcfc",
+          width: PDF_WORKSPACE_WIDTH,
+          height: PDF_WORKSPACE_HEIGHT,
+          canvasWidth: PDF_WORKSPACE_WIDTH,
+          canvasHeight: PDF_WORKSPACE_HEIGHT,
+        });
+      } catch (error) {
+        htmlToImageError = error;
+      }
+    }
+
+    const html2Message = html2CanvasError?.message || "not attempted";
+    const htmlToImageMessage = htmlToImageError?.message || "not attempted";
+    throw new Error(
+      `Preview capture failed. html2canvas: ${html2Message}. html-to-image: ${htmlToImageMessage}.`
+    );
+
+  } finally {
+    staging.remove();
+  }
+}
+
+async function generatePdfWithManualFallback() {
   const doc = new window.jspdf.jsPDF({
     orientation: "portrait",
     unit: "pt",
@@ -801,9 +969,39 @@ async function generatePdf() {
     }
   });
 
-  const fileStem = sanitizeFileName(formState.studentName || "committee-review");
-  doc.save(`${fileStem}-committee-review.pdf`);
-  setStatus("PDF generated.");
+  return doc;
+}
+
+async function generatePdf() {
+  if (!ensurePdfLibAvailable()) return;
+  setStatus("Generating PDF from live preview...");
+
+  try {
+    const imageData = await capturePreviewSheetToImage();
+    const doc = new window.jspdf.jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: [PDF_WORKSPACE_WIDTH, PDF_WORKSPACE_HEIGHT],
+    });
+    doc.addImage(
+      imageData,
+      "PNG",
+      0,
+      0,
+      PDF_WORKSPACE_WIDTH,
+      PDF_WORKSPACE_HEIGHT,
+      undefined,
+      "FAST"
+    );
+
+    const fileStem = sanitizeFileName(formState.studentName || "committee-review");
+    doc.save(`${fileStem}-committee-review.pdf`);
+    setStatus("PDF generated from live preview.");
+  } catch (error) {
+    console.error("Preview capture PDF export failed:", error);
+    const detail = String(error?.message || "unknown capture error").slice(0, 220);
+    setStatus(`PDF export failed. ${detail}`);
+  }
 }
 
 generatePdfBtn.addEventListener("click", generatePdf);
