@@ -1,0 +1,454 @@
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Poppins:wght@400;500;600;700;800&display=swap");
+
+:root {
+  color-scheme: light;
+  --app-bg-1: #d9dee8;
+  --app-bg-2: #ced6e4;
+  --sheet-bg: #ebedf0;
+  --ink: #1e2732;
+  --muted: #6f7787;
+  --panel-bg: #f5f8fd;
+  --panel-border: #c5cddd;
+  --header-bg: #717c95;
+  --brand-badge: #f7d071;
+  --meta-fill: #edf0f4;
+  --meta-border: #ccd1d9;
+  --section-border: #cfd2d9;
+  --strengths: #26b2a1;
+  --weaknesses: #f7716d;
+  --opportunities: #2d84a0;
+  --next-steps: #efc76d;
+  --next-steps-border: #eebc53;
+  --field-focus: #2d84a0;
+  --button: #2d5f8f;
+  --button-hover: #224a71;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(160deg, var(--app-bg-1) 0%, var(--app-bg-2) 100%);
+  font-family: "Poppins", "Segoe UI", Tahoma, sans-serif;
+  color: var(--ink);
+}
+
+.app-shell {
+  width: min(1460px, 97vw);
+  margin: 14px auto;
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(360px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.panel {
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  border-radius: 8px;
+}
+
+.entry-pane {
+  padding: 16px;
+  position: sticky;
+  top: 10px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+h1 {
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: 27px;
+  line-height: 1.15;
+}
+
+h2 {
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: 24px;
+  padding: 16px 16px 0;
+}
+
+.intro {
+  margin: 8px 0 14px;
+  color: #515f75;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.form-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #465569;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #b9c6d9;
+  background: #ffffff;
+  color: #1f2a37;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 10px;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: none;
+  border-color: var(--field-focus);
+  box-shadow: 0 0 0 3px rgba(45, 132, 160, 0.2);
+}
+
+.char-count {
+  justify-self: end;
+  font-size: 12px;
+  color: #667489;
+}
+
+.actions {
+  display: flex;
+  margin-top: 2px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f6faff;
+  background: linear-gradient(135deg, var(--button) 0%, #2f71a5 100%);
+  cursor: pointer;
+  transition: transform 100ms ease, background 100ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--button-hover) 0%, #255b87 100%);
+}
+
+.status {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #566478;
+}
+
+.preview-pane {
+  min-height: min(90vh, 1300px);
+}
+
+.preview-content {
+  padding: 12px;
+  display: grid;
+  justify-items: center;
+  max-height: min(88vh, 1300px);
+  overflow: auto;
+}
+
+.review-sheet {
+  width: min(612px, 100%);
+  aspect-ratio: 612 / 792;
+  background: var(--sheet-bg);
+  border: 1px solid #c8ced9;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet-header {
+  height: 64px;
+  min-height: 64px;
+  background: var(--header-bg);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-logo {
+  height: 24px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.brand-text {
+  color: #f3f4f7;
+  font-size: clamp(13px, 1.25vw, 27px);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sheet-title {
+  color: #f3f4f7;
+  text-align: right;
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: clamp(12px, 1.15vw, 22px);
+  line-height: 1.06;
+}
+
+.sheet-meta-row {
+  width: 512px;
+  max-width: 100%;
+  margin: 10px auto 0;
+  display: grid;
+  grid-template-columns: 162px 52px 52px 216px;
+  gap: 10px;
+}
+
+.meta-pill {
+  min-height: 38px;
+  border-radius: 8px;
+  border: 2px solid var(--meta-border);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.meta-pill-value {
+  margin: 0;
+  width: 100%;
+  font-size: clamp(11px, 0.84vw, 15px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-pill-value.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sheet-readers {
+  width: 512px;
+  max-width: 100%;
+  margin: 8px auto 0;
+}
+
+.sheet-readers-title {
+  text-align: center;
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.sheet-readers-row {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 162px);
+  grid-template-rows: 78px;
+  justify-content: center;
+  gap: 10px;
+}
+
+.reader-card {
+  width: 162px;
+  height: 78px;
+  min-height: 78px;
+  border-radius: 8px;
+  border: 2px solid var(--meta-border);
+  background: #ffffff;
+  padding: 8px 6px 6px;
+  display: grid;
+  grid-template-rows: auto auto;
+}
+
+.reader-top {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.reader-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000;
+  display: grid;
+  place-items: center;
+}
+
+.reader-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.reader-initials {
+  color: #f7f9ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reader-name {
+  margin: 0;
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-name.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.reader-bio {
+  margin: 8px 2px 0;
+  text-align: center;
+  font-size: clamp(9px, 0.72vw, 14px);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reader-bio.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sheet-sections {
+  width: 512px;
+  max-width: 100%;
+  margin: 8px auto 0;
+  display: grid;
+  grid-template-rows: repeat(4, 124px);
+  gap: 10px;
+  justify-items: center;
+  align-content: start;
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
+.sheet-section {
+  width: 512px;
+  max-width: 100%;
+  height: 124px;
+  min-height: 124px;
+  border-radius: 8px;
+  border: 2px solid var(--section-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.sheet-section-title {
+  font-family: "Merriweather", "Times New Roman", serif;
+  font-size: 18px;
+  line-height: 1.06;
+  text-align: center;
+  padding: 7px 10px 8px;
+  color: #000;
+}
+
+.sheet-section-body {
+  margin: 0;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  line-height: 1.33;
+  font-size: clamp(10px, 0.86vw, 16px);
+  color: #1e2731;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.sheet-section-body.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.section-strengths .sheet-section-title {
+  background: var(--strengths);
+}
+
+.section-weaknesses .sheet-section-title {
+  background: var(--weaknesses);
+}
+
+.section-opportunities .sheet-section-title {
+  background: var(--opportunities);
+}
+
+.section-keyTakeaways {
+  border-color: var(--next-steps-border);
+}
+
+.section-keyTakeaways .sheet-section-title {
+  background: var(--next-steps);
+}
+
+.sheet-footer {
+  margin: 6px 0 10px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: -0.05px;
+  color: #1f2a35;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .entry-pane {
+    position: static;
+  }
+
+  .preview-content {
+    max-height: none;
+  }
+
+  .review-sheet {
+    aspect-ratio: 612 / 792;
+  }
+}

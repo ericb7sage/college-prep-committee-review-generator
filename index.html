@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Committee Review PDF Generator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel entry-pane" aria-labelledby="entryTitle">
+        <h1 id="entryTitle">Committee Review PDF Generator</h1>
+        <p class="intro">Enter student details on the left. The preview updates live on the right.</p>
+
+        <form id="reviewForm" class="form-grid" novalidate>
+          <label class="field" for="studentName">
+            <span class="field-label">Student Name</span>
+            <input id="studentName" name="studentName" type="text" autocomplete="name" />
+          </label>
+
+          <label class="field" for="satAct">
+            <span class="field-label">SAT/ACT</span>
+            <input id="satAct" name="satAct" type="text" />
+          </label>
+
+          <label class="field" for="gpa">
+            <span class="field-label">GPA</span>
+            <input id="gpa" name="gpa" type="text" />
+          </label>
+
+          <label class="field" for="targetSchool">
+            <span class="field-label">Target School</span>
+            <input id="targetSchool" name="targetSchool" type="text" />
+          </label>
+
+          <label class="field" for="reader1">
+            <span class="field-label">Reader 1</span>
+            <select id="reader1" name="reader1"></select>
+          </label>
+
+          <label class="field" for="reader2">
+            <span class="field-label">Reader 2</span>
+            <select id="reader2" name="reader2"></select>
+          </label>
+
+          <label class="field" for="reader3">
+            <span class="field-label">Reader 3</span>
+            <select id="reader3" name="reader3"></select>
+          </label>
+
+          <label class="field" for="strengths">
+            <span class="field-label">Strengths</span>
+            <textarea id="strengths" name="strengths" rows="4" maxlength="500"></textarea>
+            <span id="strengthsCount" class="char-count" aria-live="polite">0/500</span>
+          </label>
+
+          <label class="field" for="weaknesses">
+            <span class="field-label">Weaknesses</span>
+            <textarea id="weaknesses" name="weaknesses" rows="4" maxlength="500"></textarea>
+            <span id="weaknessesCount" class="char-count" aria-live="polite">0/500</span>
+          </label>
+
+          <label class="field" for="opportunities">
+            <span class="field-label">Opportunities</span>
+            <textarea id="opportunities" name="opportunities" rows="4" maxlength="500"></textarea>
+            <span id="opportunitiesCount" class="char-count" aria-live="polite">0/500</span>
+          </label>
+
+          <label class="field" for="keyTakeaways">
+            <span class="field-label">Key Takeaways</span>
+            <textarea id="keyTakeaways" name="keyTakeaways" rows="4" maxlength="500"></textarea>
+            <span id="keyTakeawaysCount" class="char-count" aria-live="polite">0/500</span>
+          </label>
+
+          <div class="actions">
+            <button id="generatePdfBtn" type="button">Generate PDF</button>
+          </div>
+          <p id="status" class="status" aria-live="polite">Ready.</p>
+        </form>
+      </section>
+
+      <section class="panel preview-pane" aria-labelledby="previewTitle">
+        <h2 id="previewTitle">Live Preview</h2>
+        <div id="previewContent" class="preview-content"></div>
+      </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
