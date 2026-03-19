@@ -68,7 +68,7 @@ const FIELD_METADATA = [
   },
   {
     key: "weaknesses",
-    label: "Weaknesses",
+    label: "Potential Weaknesses",
     previewLabel: "Potential Weaknesses",
     inputId: "weaknesses",
     kind: "narrative",
@@ -77,7 +77,7 @@ const FIELD_METADATA = [
   },
   {
     key: "opportunities",
-    label: "Opportunities",
+    label: "Opportunities for Improvement",
     previewLabel: "Opportunities for Improvement",
     inputId: "opportunities",
     kind: "narrative",
@@ -86,7 +86,7 @@ const FIELD_METADATA = [
   },
   {
     key: "keyTakeaways",
-    label: "Key Takeaways",
+    label: "Suggested Next Steps",
     previewLabel: "Suggested Next Steps",
     inputId: "keyTakeaways",
     kind: "narrative",
@@ -98,18 +98,21 @@ const FIELD_METADATA = [
 const SECTION_STYLES = {
   strengths: {
     cssClass: "section-strengths",
-    headerColor: [38, 178, 161],
-    borderColor: [207, 210, 217],
+    headerColor: [247, 245, 243],
+    borderColor: [147, 217, 208],
+    titleTextColor: [38, 178, 161],
   },
   weaknesses: {
     cssClass: "section-weaknesses",
-    headerColor: [247, 113, 107],
-    borderColor: [207, 210, 217],
+    headerColor: [247, 245, 243],
+    borderColor: [251, 184, 181],
+    titleTextColor: [247, 113, 107],
   },
   opportunities: {
     cssClass: "section-opportunities",
-    headerColor: [45, 132, 160],
-    borderColor: [207, 210, 217],
+    headerColor: [247, 245, 243],
+    borderColor: [150, 194, 208],
+    titleTextColor: [45, 132, 160],
   },
   keyTakeaways: {
     cssClass: "section-keyTakeaways",
@@ -1012,7 +1015,8 @@ function drawSectionBlock(doc, layout, sectionKey, lines, startIndex, y, height,
 
   doc.setFont("times", "bold");
   doc.setFontSize(13.5);
-  doc.setTextColor(0, 0, 0);
+  const titleTextColor = style.titleTextColor || [0, 0, 0];
+  doc.setTextColor(...titleTextColor);
   doc.text(sectionTitle, layout.pagePaddingX + layout.contentWidth / 2, y + 19, { align: "center" });
 
   const bodyTop = y + layout.sectionHeaderHeight + layout.sectionBodyPadding;

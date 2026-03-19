@@ -526,15 +526,30 @@ button:hover {
 }
 
 .section-strengths .sheet-section-title {
-  background: var(--strengths);
+  background: #f7f5f3;
+  color: var(--strengths);
 }
 
 .section-weaknesses .sheet-section-title {
-  background: var(--weaknesses);
+  background: #f7f5f3;
+  color: var(--weaknesses);
 }
 
 .section-opportunities .sheet-section-title {
-  background: var(--opportunities);
+  background: #f7f5f3;
+  color: var(--opportunities);
+}
+
+.section-strengths {
+  border-color: rgba(38, 178, 161, 0.5);
+}
+
+.section-weaknesses {
+  border-color: rgba(247, 113, 107, 0.5);
+}
+
+.section-opportunities {
+  border-color: rgba(45, 132, 160, 0.5);
 }
 
 .section-keyTakeaways {
