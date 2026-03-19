@@ -1,0 +1,13 @@
+name = "committee-review-drafts-worker"
+main = "src/index.js"
+compatibility_date = "2026-03-19"
+
+[vars]
+ALLOWED_ORIGIN = "*"
+GEMINI_MODEL = "gemini-2.5-flash"
+RATE_LIMIT_PER_MINUTE = "8"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "a8f7c483046f4ab6a2dc8e057196b972"
+preview_id = "47bf396eb5eb448cb689dc408073724d"

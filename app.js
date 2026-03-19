@@ -3,53 +3,57 @@ const EMPTY_PLACEHOLDER = "Not provided";
 const PDF_WORKSPACE_WIDTH = 612;
 const PDF_WORKSPACE_HEIGHT = 792;
 const SHEET_CONTENT_WIDTH = 512;
+const AI_CONFIG = window.COMMITTEE_AI_CONFIG || {};
+const DRAFT_API_URL = String(AI_CONFIG.draftApiUrl || "").trim();
+const TURNSTILE_SITE_KEY = String(AI_CONFIG.turnstileSiteKey || "").trim();
+const TRANSCRIPT_MAX_CHARS = Number(AI_CONFIG.transcriptMaxChars) || 250000;
+const TRANSCRIPT_ACCEPTED_EXTENSIONS = Array.isArray(AI_CONFIG.transcriptAcceptedExtensions)
+  ? AI_CONFIG.transcriptAcceptedExtensions.map((value) => String(value || "").toLowerCase())
+  : [".txt", ".md"];
 const EMBEDDED_ASSETS = window.__EMBEDDED_ASSETS__ || {};
 const LOGO_ASSET_PATH = EMBEDDED_ASSETS.logo7sage || "./assets/logo-7sage-b2r2.svg";
 const PDF_FOOTER_TEXT =
   "If you have any questions, email collegeprep@7sage.com, or visit college.7sage.com";
 
-// Reader roster: names requested by user.
-// Jen/Jake/Kamil entries (bio/headshot) are copied from committee-review-summary-generator.
+// Reader roster: compact display with one school tag per reader.
 const READER_PROFILES = [
   {
-    fullName: "Jen Kott",
-    firstName: "Jen",
-    aliases: ["Jen Kott", "Jennifer Kott", "Jen", "Jennifer"],
+    fullName: "Jenn Kott",
+    firstName: "Jenn",
+    aliases: ["Jenn Kott", "Jen Kott", "Jennifer Kott", "Jen", "Jenn", "Jennifer"],
     headshotUrl: EMBEDDED_ASSETS.jenKottHeadshot || "./assets/jen-kott.png",
-    bio:
-      "Former AO at Northwestern, Tulane, & UNC Chapel Hill. Former Director of Admissions at Arizona Law.",
+    school: "S.C.A.D.",
   },
   {
     fullName: "Jake Baska",
     firstName: "Jake",
     aliases: ["Jake Baska", "Jacob Baska", "Jacob", "Jake"],
     headshotUrl: EMBEDDED_ASSETS.jakeBaskaHeadshot || "./assets/jake-baska.jpeg",
-    bio:
-      "Former Director of Admissions at Notre Dame Law. Host of the 7Sage Admissions Podcast.",
+    school: "Notre Dame",
   },
   {
     fullName: "Kamil Brown",
     firstName: "Kamil",
     aliases: ["Kamil Brown", "Kamil"],
     headshotUrl: EMBEDDED_ASSETS.kamilBrownHeadshot || "./assets/kamil-brown.png",
-    bio: "Former Yale Law AO. Former admissions reader at Fordham Law.",
+    school: "UPenn",
   },
   {
     fullName: "Lexi Kaider",
     firstName: "Lexi",
     aliases: ["Lexi Kaider", "Lexi"],
     headshotUrl: "",
-    bio: "Credentials",
+    school: "Wesleyan",
   },
 ];
 
 const READER_BY_NAME = new Map(READER_PROFILES.map((profile) => [profile.fullName, profile]));
 
 const FIELD_METADATA = [
-  { key: "studentName", label: "Student Name", inputId: "studentName", kind: "meta" },
-  { key: "satAct", label: "SAT/ACT", inputId: "satAct", kind: "meta" },
-  { key: "gpa", label: "GPA", inputId: "gpa", kind: "meta" },
-  { key: "targetSchool", label: "Target School", inputId: "targetSchool", kind: "meta" },
+  { key: "studentName", label: "Student Name", pillLabel: "Name", inputId: "studentName", kind: "meta" },
+  { key: "satAct", label: "SAT/ACT", inputId: "examScore", kind: "meta" },
+  { key: "gpa", label: "GPA", pillLabel: "GPA", inputId: "gpa", kind: "meta" },
+  { key: "targetSchool", label: "Target School", pillLabel: "School", inputId: "targetSchool", kind: "meta" },
   { key: "reader1", label: "Reader 1", inputId: "reader1", kind: "reader" },
   { key: "reader2", label: "Reader 2", inputId: "reader2", kind: "reader" },
   { key: "reader3", label: "Reader 3", inputId: "reader3", kind: "reader" },
@@ -116,8 +120,11 @@ const SECTION_STYLES = {
 
 const PDF_THEME = {
   pageBackground: [252, 252, 252],
-  headerBackground: [241, 237, 233],
+  headerBackground: [235, 242, 251],
   headerText: [0, 0, 0],
+  headerAccentA: [38, 178, 161],
+  headerAccentB: [45, 132, 160],
+  headerAccentC: [239, 199, 109],
   badgeFill: [247, 208, 113],
   badgeText: [16, 35, 63],
   metaFill: [255, 255, 255],
@@ -143,6 +150,7 @@ const FIELD_BY_KEY = new Map(FIELD_METADATA.map((field) => [field.key, field]));
 
 const formState = {
   studentName: "",
+  examType: "SAT",
   satAct: "",
   gpa: "",
   targetSchool: "",
@@ -157,12 +165,249 @@ const formState = {
 
 const previewContent = document.getElementById("previewContent");
 const statusEl = document.getElementById("status");
+const transcriptFileInput = document.getElementById("transcriptFile");
+const transcriptMetaEl = document.getElementById("transcriptMeta");
+const turnstileWrapEl = document.getElementById("turnstileWrap");
+const turnstileContainerEl = document.getElementById("turnstileContainer");
+const generateDraftsBtn = document.getElementById("generateDraftsBtn");
 const generatePdfBtn = document.getElementById("generatePdfBtn");
 let pdfLogoCache = null;
 let pdfLogoLoadPromise = null;
+let turnstileWidgetId = null;
+let turnstileToken = "";
+const transcriptState = {
+  fileName: "",
+  text: "",
+};
 
 function setStatus(message) {
   statusEl.textContent = message;
+}
+
+function clampNarrative(value) {
+  return String(value || "").trim().slice(0, NARRATIVE_MAX_CHARS);
+}
+
+function getNarrativeValueMap(source = formState) {
+  return {
+    strengths: String(source.strengths || ""),
+    weaknesses: String(source.weaknesses || ""),
+    opportunities: String(source.opportunities || ""),
+    keyTakeaways: String(source.keyTakeaways || ""),
+  };
+}
+
+function getEmptyNarrativeKeys() {
+  return NARRATIVE_FIELD_KEYS.filter((key) => !String(formState[key] || "").trim());
+}
+
+function formatCharCount(length) {
+  return `${length.toLocaleString()} chars`;
+}
+
+function updateTranscriptMeta() {
+  if (!transcriptMetaEl) return;
+  if (!transcriptState.text) {
+    transcriptMetaEl.textContent = "No transcript uploaded.";
+    return;
+  }
+
+  const label = transcriptState.fileName || "Transcript";
+  transcriptMetaEl.textContent = `${label} loaded (${formatCharCount(transcriptState.text.length)}).`;
+}
+
+function getFileExtension(fileName) {
+  const value = String(fileName || "").toLowerCase();
+  const index = value.lastIndexOf(".");
+  if (index <= 0 || index === value.length - 1) return "";
+  return value.slice(index);
+}
+
+function isAcceptedTranscriptFile(file) {
+  if (!file) return false;
+  const extension = getFileExtension(file.name);
+  if (!TRANSCRIPT_ACCEPTED_EXTENSIONS.includes(extension)) return false;
+  const mime = String(file.type || "").toLowerCase();
+  if (!mime) return true;
+  return mime.startsWith("text/") || mime.includes("markdown");
+}
+
+async function onTranscriptFileChange(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) {
+    transcriptState.fileName = "";
+    transcriptState.text = "";
+    updateTranscriptMeta();
+    return;
+  }
+
+  if (!isAcceptedTranscriptFile(file)) {
+    transcriptState.fileName = "";
+    transcriptState.text = "";
+    if (transcriptFileInput) {
+      transcriptFileInput.value = "";
+    }
+    updateTranscriptMeta();
+    setStatus("Transcript must be a .txt or .md file.");
+    return;
+  }
+
+  const raw = await file.text();
+  const normalized = String(raw || "").replace(/\r\n/g, "\n");
+  const trimmed = normalized.slice(0, TRANSCRIPT_MAX_CHARS);
+  transcriptState.fileName = file.name;
+  transcriptState.text = trimmed;
+  updateTranscriptMeta();
+
+  if (normalized.length > TRANSCRIPT_MAX_CHARS) {
+    setStatus(`Transcript was truncated to ${formatCharCount(TRANSCRIPT_MAX_CHARS)}.`);
+  } else {
+    setStatus("Transcript uploaded. You can generate drafts now.");
+  }
+}
+
+function initTurnstileWidget() {
+  if (!turnstileWrapEl || !turnstileContainerEl) return;
+  if (!TURNSTILE_SITE_KEY) {
+    turnstileWrapEl.hidden = true;
+    return;
+  }
+
+  turnstileWrapEl.hidden = false;
+  const tryRender = () => {
+    if (turnstileWidgetId !== null) return;
+    if (!window.turnstile?.render) {
+      window.setTimeout(tryRender, 250);
+      return;
+    }
+
+    turnstileWidgetId = window.turnstile.render(turnstileContainerEl, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: "light",
+      callback: (token) => {
+        turnstileToken = String(token || "");
+      },
+      "expired-callback": () => {
+        turnstileToken = "";
+      },
+      "error-callback": () => {
+        turnstileToken = "";
+      },
+    });
+  };
+
+  tryRender();
+}
+
+function buildDraftRequestPayload(emptyKeys) {
+  const examType = String(formState.examType || "SAT").toUpperCase();
+  const examScore = String(formState.satAct || "").trim();
+  return {
+    context: {
+      studentName: String(formState.studentName || ""),
+      satAct: examScore ? `${examType} ${examScore}` : "",
+      examType,
+      gpa: String(formState.gpa || ""),
+      targetSchool: String(formState.targetSchool || ""),
+      reader1: String(formState.reader1 || ""),
+      reader2: String(formState.reader2 || ""),
+      reader3: String(formState.reader3 || ""),
+    },
+    transcript: {
+      fileName: transcriptState.fileName,
+      text: transcriptState.text,
+    },
+    existingNarratives: getNarrativeValueMap(),
+    options: {
+      mode: "fill_empty_only",
+      targetKeys: emptyKeys,
+      maxChars: NARRATIVE_MAX_CHARS,
+    },
+    turnstileToken: turnstileToken || "",
+  };
+}
+
+function applyDraftsToForm(drafts, targetKeys) {
+  let filledCount = 0;
+
+  targetKeys.forEach((key) => {
+    const field = FIELD_BY_KEY.get(key);
+    if (!field) return;
+    if (String(formState[key] || "").trim()) return;
+
+    const value = clampNarrative(drafts?.[key] || "");
+    if (!value) return;
+
+    const input = document.getElementById(field.inputId);
+    if (!input) return;
+    input.value = value;
+    syncInputToState(field);
+    filledCount += 1;
+  });
+
+  return filledCount;
+}
+
+async function generateDrafts() {
+  if (!generateDraftsBtn) return;
+  if (!DRAFT_API_URL) {
+    setStatus("Draft API URL is not configured. Set COMMITTEE_AI_CONFIG.draftApiUrl in config.js.");
+    return;
+  }
+
+  if (!transcriptState.text.trim()) {
+    setStatus("Upload a Zoom transcript (.txt or .md) before generating drafts.");
+    return;
+  }
+
+  if (TURNSTILE_SITE_KEY && !turnstileToken) {
+    setStatus("Complete the verification challenge before generating drafts.");
+    return;
+  }
+
+  const emptyKeys = getEmptyNarrativeKeys();
+  if (!emptyKeys.length) {
+    setStatus("All narrative fields already have text. Clear a field to generate a draft.");
+    return;
+  }
+
+  const originalLabel = generateDraftsBtn.textContent;
+  generateDraftsBtn.disabled = true;
+  generateDraftsBtn.textContent = "Generating...";
+  setStatus("Generating drafts from transcript...");
+
+  try {
+    const response = await fetch(DRAFT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildDraftRequestPayload(emptyKeys)),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.message || `Draft generation failed (${response.status}).`);
+    }
+
+    const filledCount = applyDraftsToForm(data?.drafts || {}, emptyKeys);
+    renderPreview();
+
+    if (filledCount > 0) {
+      setStatus(`Drafted ${filledCount} field(s). Review and edit before exporting PDF.`);
+    } else {
+      setStatus("No draft text was returned for empty fields.");
+    }
+
+    if (turnstileWidgetId !== null && window.turnstile?.reset) {
+      window.turnstile.reset(turnstileWidgetId);
+      turnstileToken = "";
+    }
+  } catch (error) {
+    const detail = String(error?.message || "unknown error").slice(0, 220);
+    setStatus(`Draft generation failed. ${detail}`);
+  } finally {
+    generateDraftsBtn.disabled = false;
+    generateDraftsBtn.textContent = originalLabel || "Generate Drafts";
+  }
 }
 
 function getDisplayValue(value) {
@@ -302,10 +547,40 @@ function bindFormInputs() {
   });
 }
 
+function bindExamTypeToggle() {
+  const radios = [...document.querySelectorAll('input[name="examType"]')];
+  if (!radios.length) return;
+
+  const syncType = () => {
+    const selected = radios.find((radio) => radio.checked);
+    const normalized = String(selected?.value || "SAT").toUpperCase();
+    formState.examType = normalized === "ACT" ? "ACT" : "SAT";
+    renderPreview();
+  };
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", syncType);
+  });
+
+  syncType();
+}
+
+function getMetaPillLabel(key) {
+  const field = FIELD_BY_KEY.get(key);
+  if (key === "satAct") {
+    return String(formState.examType || "SAT").toUpperCase() === "ACT" ? "ACT" : "SAT";
+  }
+  return field?.pillLabel || field?.label || key;
+}
+
 function createMetaPill(key) {
   const value = getDisplayValue(formState[key]);
   const pill = document.createElement("div");
   pill.className = "meta-pill";
+
+  const labelEl = document.createElement("p");
+  labelEl.className = "meta-pill-label";
+  labelEl.textContent = getMetaPillLabel(key);
 
   const valueEl = document.createElement("p");
   valueEl.className = "meta-pill-value";
@@ -314,6 +589,7 @@ function createMetaPill(key) {
     valueEl.classList.add("is-empty");
   }
 
+  pill.appendChild(labelEl);
   pill.appendChild(valueEl);
   return pill;
 }
@@ -361,18 +637,22 @@ function createReaderCard(readerKey) {
     name.classList.add("is-empty");
   }
 
-  top.appendChild(avatar);
-  top.appendChild(name);
-
-  const bio = document.createElement("p");
-  bio.className = "reader-bio";
-  bio.textContent = profile ? profile.bio : "Credentials";
+  const school = document.createElement("p");
+  school.className = "reader-school";
+  school.textContent = profile ? profile.school : "School";
   if (!profile) {
-    bio.classList.add("is-empty");
+    school.classList.add("is-empty");
   }
 
+  const copy = document.createElement("div");
+  copy.className = "reader-copy";
+  copy.appendChild(name);
+  copy.appendChild(school);
+
+  top.appendChild(avatar);
+  top.appendChild(copy);
+
   card.appendChild(top);
-  card.appendChild(bio);
   return card;
 }
 
@@ -416,20 +696,15 @@ function renderPreview() {
   logo.loading = "eager";
   brand.appendChild(logo);
 
-  const brandText = document.createElement("span");
-  brandText.className = "brand-text";
-  brandText.textContent = "College Prep";
-  brand.appendChild(brandText);
-
   const title = document.createElement("h2");
   title.className = "sheet-title";
-  title.textContent = "Committee Review";
+  title.textContent = "Admissions Committee Review";
 
-  const headerStack = document.createElement("div");
-  headerStack.className = "sheet-header-stack";
-  headerStack.appendChild(brand);
-  headerStack.appendChild(title);
-  header.appendChild(headerStack);
+  const headerInline = document.createElement("div");
+  headerInline.className = "sheet-header-inline";
+  headerInline.appendChild(brand);
+  headerInline.appendChild(title);
+  header.appendChild(headerInline);
 
   const metaRow = document.createElement("section");
   metaRow.className = "sheet-meta-row";
@@ -486,17 +761,17 @@ function getPdfLayout(doc) {
   const pageHeight = PDF_WORKSPACE_HEIGHT;
   const pagePaddingX = (pageWidth - SHEET_CONTENT_WIDTH) / 2;
   const contentWidth = SHEET_CONTENT_WIDTH;
-  const headerHeight = 64;
-  const metaY = 78;
-  const metaHeight = 34;
-  const readersTitleY = 122;
-  const readerCardsY = 130;
+  const headerHeight = 48;
+  const metaY = 60;
+  const metaHeight = 36;
+  const readersTitleY = 102;
+  const readerCardsY = 110;
   const readerCardWidth = 162;
-  const readerCardHeight = 78;
+  const readerCardHeight = 62;
   const readerCardGap = 10;
-  const sectionsStartY = 218;
+  const sectionsStartY = 186;
   const sectionGap = 10;
-  const defaultSectionHeight = 110;
+  const defaultSectionHeight = 118;
   const sectionHeaderHeight = 27;
   const sectionBodyPadding = 9;
   const sectionLineHeight = 12;
@@ -561,24 +836,26 @@ function drawMetaPills(doc, layout) {
 
   let x = rowStartX;
   META_FIELD_KEYS.forEach((key, index) => {
+    const label = getMetaPillLabel(key);
     const width = widths[index];
     const value = getDisplayValue(formState[key]);
-    const center = key === "satAct" || key === "gpa";
     const maxTextWidth = width - 12;
 
     doc.setFillColor(...PDF_THEME.metaFill);
     doc.setDrawColor(...PDF_THEME.metaBorder);
     doc.roundedRect(x, layout.metaY, width, layout.metaHeight, 8, 8, "FD");
 
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.8);
+    doc.setTextColor(95, 106, 123);
+    const labelText = truncateTextToWidth(doc, String(label).toUpperCase(), maxTextWidth);
+    doc.text(labelText, x + 7, layout.metaY + 11);
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...(value === EMPTY_PLACEHOLDER ? PDF_THEME.mutedText : PDF_THEME.bodyText));
     const text = truncateTextToWidth(doc, value, maxTextWidth);
-    if (center) {
-      doc.text(text, x + width / 2, layout.metaY + 21, { align: "center" });
-    } else {
-      doc.text(text, x + 7, layout.metaY + 21);
-    }
+    doc.text(text, x + 7, layout.metaY + 24);
 
     x += width + pillGap;
   });
@@ -597,17 +874,15 @@ function drawReaderCards(doc, layout) {
     const cardWidth = layout.readerCardWidth;
     const cardX = rowStartX + index * (cardWidth + layout.readerCardGap);
     const cardY = layout.readerCardsY;
-    const centerX = cardX + cardWidth / 2;
-
     doc.setFillColor(...PDF_THEME.readerCardFill);
     doc.setDrawColor(...PDF_THEME.cardBorder);
     doc.setLineWidth(1.2);
     doc.roundedRect(cardX, cardY, cardWidth, layout.readerCardHeight, 8, 8, "FD");
 
-    const avatarDiameter = 32;
+    const avatarDiameter = 28;
     const avatarRadius = avatarDiameter / 2;
     const avatarX = cardX + 24;
-    const avatarY = cardY + 26;
+    const avatarY = cardY + 20;
     doc.setFillColor(0, 0, 0);
     doc.circle(avatarX, avatarY, avatarRadius, "F");
 
@@ -618,21 +893,18 @@ function drawReaderCards(doc, layout) {
     doc.text(initials, avatarX, avatarY + 3, { align: "center" });
 
     doc.setFont("times", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(9.3);
     doc.setTextColor(...PDF_THEME.bodyText);
     const nameText = profile ? profile.fullName : "Select Reader";
-    const nameLine = truncateTextToWidth(doc, nameText, cardWidth - 58);
-    doc.text(nameLine, cardX + 56, cardY + 30);
+    const nameLine = truncateTextToWidth(doc, nameText, cardWidth - 66);
+    doc.text(nameLine, cardX + 52, cardY + 20);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    const bioText = profile ? profile.bio : "Credentials";
-    const bioLines = doc.splitTextToSize(bioText, cardWidth - 18).slice(0, 2);
-    let bioY = cardY + 52;
-    bioLines.forEach((line) => {
-      doc.text(line, centerX, bioY, { align: "center" });
-      bioY += 10;
-    });
+    doc.setFontSize(8.7);
+    doc.setTextColor(84, 97, 115);
+    const schoolText = profile ? profile.school : "School";
+    const schoolLine = truncateTextToWidth(doc, schoolText, cardWidth - 66);
+    doc.text(schoolLine, cardX + 52, cardY + 34);
   });
 }
 
@@ -642,11 +914,17 @@ function drawPageChrome(doc, layout, logoData) {
 
   doc.setFillColor(...PDF_THEME.headerBackground);
   doc.rect(0, 0, layout.pageWidth, layout.headerHeight, "F");
+  const bandY = layout.headerHeight - 3;
+  const third = layout.pageWidth / 3;
+  doc.setFillColor(...PDF_THEME.headerAccentA);
+  doc.rect(0, bandY, third, 3, "F");
+  doc.setFillColor(...PDF_THEME.headerAccentB);
+  doc.rect(third, bandY, third, 3, "F");
+  doc.setFillColor(...PDF_THEME.headerAccentC);
+  doc.rect(third * 2, bandY, third, 3, "F");
 
   const headerCenterX = layout.pagePaddingX + layout.contentWidth / 2;
-  const headerLine1Y = 31;
-  const headerLine2Y = 42;
-  const badgeX = layout.pagePaddingX;
+  const headerLineY = 30;
   const logoHeight = 24;
   let logoWidth = 78;
 
@@ -655,14 +933,14 @@ function drawPageChrome(doc, layout, logoData) {
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(19);
   doc.setTextColor(...PDF_THEME.headerText);
-  const brandText = "College Prep";
+  const brandText = "Admissions Committee Review";
   const brandGap = 7;
   const brandTextWidth = doc.getTextWidth(brandText);
   const brandTotalWidth = logoWidth + brandGap + brandTextWidth;
   const brandStartX = headerCenterX - brandTotalWidth / 2;
-  const badgeY = Math.round(headerLine1Y - 17);
+  const badgeY = Math.round(headerLineY - 18);
 
   if (logoData?.dataUrl) {
     doc.addImage(logoData.dataUrl, "PNG", brandStartX, badgeY, logoWidth, logoHeight);
@@ -678,13 +956,9 @@ function drawPageChrome(doc, layout, logoData) {
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(19);
   doc.setTextColor(...PDF_THEME.headerText);
-  doc.text(brandText, brandStartX + logoWidth + brandGap, headerLine1Y);
-
-  doc.setFont("times", "bold");
-  doc.setFontSize(20);
-  doc.text("Committee Review", headerCenterX, headerLine2Y, { align: "center" });
+  doc.text(brandText, brandStartX + logoWidth + brandGap, headerLineY - 14);
 
   drawMetaPills(doc, layout);
   drawReaderCards(doc, layout);
@@ -1004,8 +1278,24 @@ async function generatePdf() {
   }
 }
 
+if (transcriptFileInput) {
+  transcriptFileInput.addEventListener("change", (event) => {
+    onTranscriptFileChange(event).catch((error) => {
+      console.error("Transcript upload failed:", error);
+      setStatus("Could not read transcript file.");
+    });
+  });
+}
+
+if (generateDraftsBtn) {
+  generateDraftsBtn.addEventListener("click", generateDrafts);
+}
+
 generatePdfBtn.addEventListener("click", generatePdf);
 
 populateReaderSelects();
 bindFormInputs();
+bindExamTypeToggle();
 renderPreview();
+updateTranscriptMeta();
+initTurnstileWidget();

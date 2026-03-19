@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Committee Review PDF Generator</title>
-    <link rel="stylesheet" href="./styles.css?v=20260318s" />
+    <link rel="stylesheet" href="./styles.css?v=20260319b" />
   </head>
   <body>
     <main class="app-shell">
@@ -18,10 +18,22 @@
             <input id="studentName" name="studentName" type="text" autocomplete="name" />
           </label>
 
-          <label class="field" for="satAct">
-            <span class="field-label">SAT/ACT</span>
-            <input id="satAct" name="satAct" type="text" />
-          </label>
+          <div class="field">
+            <span class="field-label">Test Score</span>
+            <div class="exam-controls">
+              <div class="exam-toggle" role="group" aria-label="Test type">
+                <label class="exam-option">
+                  <input id="examTypeSat" name="examType" type="radio" value="SAT" checked />
+                  <span>SAT</span>
+                </label>
+                <label class="exam-option">
+                  <input id="examTypeAct" name="examType" type="radio" value="ACT" />
+                  <span>ACT</span>
+                </label>
+              </div>
+              <input id="examScore" name="examScore" type="text" placeholder="Score" />
+            </div>
+          </div>
 
           <label class="field" for="gpa">
             <span class="field-label">GPA</span>
@@ -48,6 +60,17 @@
             <select id="reader3" name="reader3"></select>
           </label>
 
+          <label class="field" for="transcriptFile">
+            <span class="field-label">Zoom Transcript (.txt/.md)</span>
+            <input id="transcriptFile" name="transcriptFile" type="file" accept=".txt,.md,text/plain,text/markdown" />
+            <span id="transcriptMeta" class="upload-meta">No transcript uploaded.</span>
+          </label>
+
+          <div id="turnstileWrap" class="turnstile-wrap" hidden>
+            <span class="field-label">Verification</span>
+            <div id="turnstileContainer"></div>
+          </div>
+
           <label class="field" for="strengths">
             <span class="field-label">Strengths</span>
             <textarea id="strengths" name="strengths" rows="4" maxlength="500"></textarea>
@@ -73,6 +96,7 @@
           </label>
 
           <div class="actions">
+            <button id="generateDraftsBtn" type="button">Generate Drafts</button>
             <button id="generatePdfBtn" type="button">Generate PDF</button>
           </div>
           <p id="status" class="status" aria-live="polite">Ready.</p>
@@ -88,7 +112,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="./assets/embedded-assets.js?v=20260318s"></script>
-    <script src="./app.js?v=20260318s"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script src="./config.js?v=20260319a"></script>
+    <script src="./assets/embedded-assets.js?v=20260319a"></script>
+    <script src="./app.js?v=20260319b"></script>
   </body>
 </html>
