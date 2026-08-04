@@ -3,118 +3,78 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Committee Review PDF Generator</title>
-    <link rel="stylesheet" href="./styles.css?v=20260319e" />
+    <title>7Sage Committee Review Generator</title>
+    <link rel="stylesheet" href="./styles.css?v=20260803" />
   </head>
   <body>
+    <header class="topbar">
+      <img src="./assets/logo-7sage-b2r2.svg" alt="7Sage" />
+      <div><p>College Admissions</p><h1>Committee Review Generator</h1></div>
+    </header>
+
     <main class="app-shell">
-      <section class="panel entry-pane" aria-labelledby="entryTitle">
-        <h1 id="entryTitle">Committee Review PDF Generator</h1>
-        <p class="intro">Enter student details on the left. The preview updates live on the right.</p>
+      <section id="importView" class="import-card" aria-labelledby="importTitle">
+        <p class="eyebrow">CSV-first workflow</p>
+        <h2 id="importTitle">Create a committee review</h2>
+        <p class="lede">Upload one CSV row containing the student details and all three reviewer evaluations. Nothing leaves this browser.</p>
+        <div id="dropZone" class="drop-zone">
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+          <label for="csvFile"><span>Choose a CSV file</span><small>or drag and drop it here</small></label>
+        </div>
+        <div class="template-actions">
+          <a id="downloadTemplate" class="secondary-button" href="#" download="7sage-committee-review-template.csv">Download blank template</a>
+          <a id="downloadExample" class="text-link" href="#" download="7sage-committee-review-example.csv">Download example</a>
+        </div>
+        <div id="importErrors" class="error-panel" role="alert" hidden></div>
+      </section>
 
-        <form id="reviewForm" class="form-grid" novalidate>
-          <label class="field" for="studentName">
-            <span class="field-label">Student Name</span>
-            <input id="studentName" name="studentName" type="text" autocomplete="name" />
-          </label>
-
-          <div class="field">
-            <span class="field-label">SAT/ACT</span>
-            <div class="exam-controls">
-              <div class="exam-toggle" role="group" aria-label="Test type">
-                <label class="exam-option">
-                  <input id="examTypeSat" name="examType" type="radio" value="SAT" checked />
-                  <span>SAT</span>
-                </label>
-                <label class="exam-option">
-                  <input id="examTypeAct" name="examType" type="radio" value="ACT" />
-                  <span>ACT</span>
-                </label>
-              </div>
-              <input id="examScore" name="examScore" type="text" placeholder="Score" />
+      <section id="workspace" class="workspace" hidden>
+        <aside class="editor-pane">
+          <div class="editor-heading">
+            <div><p class="eyebrow">Consultant editor</p><h2>Edit report</h2></div>
+            <div class="file-actions">
+              <button id="replaceCsv" class="text-button" type="button">Replace CSV</button>
+              <button id="resetReport" class="text-button" type="button">Reset imported values</button>
             </div>
           </div>
 
-          <label class="field" for="gpa">
-            <span class="field-label">GPA</span>
-            <input id="gpa" name="gpa" type="text" />
-          </label>
+          <form id="reportForm" novalidate>
+            <fieldset>
+              <legend>Student information</legend>
+              <div class="field-grid">
+                <label><span>Student name</span><input data-path="student.name" type="text" /></label>
+                <label><span>Test type</span><select data-path="student.testType"><option>SAT</option><option>ACT</option></select></label>
+                <label><span>Test score</span><input data-path="student.testScore" type="text" /></label>
+                <label><span>GPA</span><input data-path="student.gpa" type="text" /></label>
+                <label class="wide"><span>Target school</span><input data-path="student.targetSchool" type="text" /></label>
+              </div>
+            </fieldset>
 
-          <label class="field" for="targetSchool">
-            <span class="field-label">Target School</span>
-            <input id="targetSchool" name="targetSchool" type="text" />
-          </label>
+            <fieldset>
+              <legend>Overall summary</legend>
+              <label class="textarea-field">
+                <span>Consultant summary</span>
+                <textarea data-path="consultantSummary" rows="8" placeholder="Synthesize the reviewers’ feedback for the student..."></textarea>
+                <span class="field-meta"><span data-count="consultantSummary">0 characters</span><span data-fit="summary" class="fit-badge">Fits</span></span>
+              </label>
+            </fieldset>
 
-          <label class="field" for="reader1">
-            <span class="field-label">Reader 1</span>
-            <select id="reader1" name="reader1"></select>
-          </label>
+            <div id="reviewerEditors"></div>
+          </form>
+        </aside>
 
-          <label class="field" for="reader2">
-            <span class="field-label">Reader 2</span>
-            <select id="reader2" name="reader2"></select>
-          </label>
-
-          <label class="field" for="reader3">
-            <span class="field-label">Reader 3</span>
-            <select id="reader3" name="reader3"></select>
-          </label>
-
-          <label class="field" for="transcriptFile">
-            <span class="field-label">Zoom Transcript (.txt/.md)</span>
-            <input id="transcriptFile" name="transcriptFile" type="file" accept=".txt,.md,text/plain,text/markdown" />
-            <span id="transcriptMeta" class="upload-meta">No transcript uploaded.</span>
-          </label>
-
-          <div id="turnstileWrap" class="turnstile-wrap" hidden>
-            <span class="field-label">Verification</span>
-            <div id="turnstileContainer"></div>
+        <section class="preview-pane">
+          <div class="preview-toolbar">
+            <div><p class="eyebrow">Live preview</p><h2>Two-page report</h2></div>
+            <button id="exportPdf" class="primary-button" type="button">Export PDF</button>
           </div>
-
-          <label class="field" for="strengths">
-            <span class="field-label">Strengths</span>
-            <textarea id="strengths" name="strengths" rows="4" maxlength="500"></textarea>
-            <span id="strengthsCount" class="char-count" aria-live="polite">0/500</span>
-          </label>
-
-          <label class="field" for="weaknesses">
-            <span class="field-label">Potential Weaknesses</span>
-            <textarea id="weaknesses" name="weaknesses" rows="4" maxlength="500"></textarea>
-            <span id="weaknessesCount" class="char-count" aria-live="polite">0/500</span>
-          </label>
-
-          <label class="field" for="opportunities">
-            <span class="field-label">Opportunities for Improvement</span>
-            <textarea id="opportunities" name="opportunities" rows="4" maxlength="500"></textarea>
-            <span id="opportunitiesCount" class="char-count" aria-live="polite">0/500</span>
-          </label>
-
-          <label class="field" for="keyTakeaways">
-            <span class="field-label">Suggested Next Steps</span>
-            <textarea id="keyTakeaways" name="keyTakeaways" rows="4" maxlength="500"></textarea>
-            <span id="keyTakeawaysCount" class="char-count" aria-live="polite">0/500</span>
-          </label>
-
-          <div class="actions">
-            <button id="generateDraftsBtn" type="button">Generate Drafts</button>
-            <button id="generatePdfBtn" type="button">Generate PDF</button>
-          </div>
-          <p id="status" class="status" aria-live="polite">Ready.</p>
-        </form>
-      </section>
-
-      <section class="panel preview-pane" aria-labelledby="previewTitle">
-        <h2 id="previewTitle">Live Preview</h2>
-        <div id="previewContent" class="preview-content"></div>
+          <div id="fitAlert" class="fit-alert" aria-live="polite"></div>
+          <div id="previewPages" class="preview-pages"></div>
+        </section>
       </section>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-    <script src="./config.js?v=20260319e"></script>
-    <script src="./assets/embedded-assets.js?v=20260319e"></script>
-    <script src="./app.js?v=20260319e"></script>
+    <script src="./app.js?v=20260803"></script>
   </body>
 </html>
