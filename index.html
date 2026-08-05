@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>7Sage Committee Review Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20260803" />
+    <link rel="stylesheet" href="./star-fix.css?v=20260804b" />
   </head>
   <body>
     <header class="topbar">
@@ -13,28 +17,12 @@
     </header>
 
     <main class="app-shell">
-      <section id="importView" class="import-card" aria-labelledby="importTitle">
-        <p class="eyebrow">CSV-first workflow</p>
-        <h2 id="importTitle">Create a committee review</h2>
-        <p class="lede">Upload one CSV row containing the student details and all three reviewer evaluations. Nothing leaves this browser.</p>
-        <div id="dropZone" class="drop-zone">
-          <input id="csvFile" type="file" accept=".csv,text/csv" />
-          <label for="csvFile"><span>Choose a CSV file</span><small>or drag and drop it here</small></label>
-        </div>
-        <div class="template-actions">
-          <a id="downloadTemplate" class="secondary-button" href="#" download="7sage-committee-review-template.csv">Download blank template</a>
-          <a id="downloadExample" class="text-link" href="#" download="7sage-committee-review-example.csv">Download example</a>
-        </div>
-        <div id="importErrors" class="error-panel" role="alert" hidden></div>
-      </section>
-
-      <section id="workspace" class="workspace" hidden>
+      <section id="workspace" class="workspace">
         <aside class="editor-pane">
           <div class="editor-heading">
             <div><p class="eyebrow">Consultant editor</p><h2>Edit report</h2></div>
             <div class="file-actions">
-              <button id="replaceCsv" class="text-button" type="button">Replace CSV</button>
-              <button id="resetReport" class="text-button" type="button">Reset imported values</button>
+              <button id="resetReport" class="text-button" type="button">Clear form</button>
             </div>
           </div>
 
