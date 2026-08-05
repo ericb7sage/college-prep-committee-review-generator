@@ -5,17 +5,6 @@ const RATING_LABELS = {
   initiativeLeadership: "Initiative / Leadership",
   impactContribution: "Impact / Contribution",
 };
-const QUESTION_KEYS = ["unansweredQuestions", "campusFit", "distinctiveness"];
-const QUESTION_LABELS = {
-  unansweredQuestions: "Unanswered questions",
-  campusFit: "Thriving on campus",
-  distinctiveness: "Distinctiveness",
-};
-const QUESTION_PROMPTS = {
-  unansweredQuestions: "Do you have unanswered questions? What would you like to know more about?",
-  campusFit: "Can you picture this applicant thriving on your campus?",
-  distinctiveness: "Did you learn enough to distinguish this applicant from students with identical scores and GPAs?",
-};
 const PDF = {
   width: 612, height: 792, margin: 40, headerHeight: 58,
   summaryWidth: 506, summaryTextHeight: 338,
@@ -28,7 +17,7 @@ function createBlankReport() {
     reviewers: [1, 2, 3].map(() => ({
       name: "",
       ratings: { passionCuriosity: 0, academicAbility: 0, initiativeLeadership: 0, impactContribution: 0 },
-      answers: { unansweredQuestions: "", campusFit: "", distinctiveness: "" },
+      comment: "",
     })),
     consultantSummary: "",
   };
@@ -58,8 +47,8 @@ function reviewerEditorHtml(reviewer, index) {
   const number = index + 1;
   return `<fieldset class="reviewer-fieldset"><legend>Reviewer ${number}</legend>
     <label><span>Reviewer name</span><input data-path="reviewers.${index}.name" type="text" value="${escapeHtml(reviewer.name)}"></label>
-    <div class="ratings-grid">${RATING_KEYS.map((key) => `<div class="rating-row"><span class="rating-label">${RATING_LABELS[key]}</span><div class="star-input" role="radiogroup" aria-label="${escapeHtml(RATING_LABELS[key])}">${[5,4,3,2,1].map((rating) => `<input data-path="reviewers.${index}.ratings.${key}" id="r${number}-${key}-${rating}" name="r${number}-${key}" type="radio" value="${rating}" ${reviewer.ratings[key] === rating ? "checked" : ""}><label for="r${number}-${key}-${rating}" aria-label="${rating} star${rating === 1 ? "" : "s"}">★</label>`).join("")}</div></div>`).join("")}</div>
-    <div class="review-questions">${QUESTION_KEYS.map((key) => `<label class="textarea-field"><span>${escapeHtml(QUESTION_PROMPTS[key])}</span><textarea data-path="reviewers.${index}.answers.${key}" rows="4">${escapeHtml(reviewer.answers[key])}</textarea><span class="field-meta"><span data-count="reviewers.${index}.answers.${key}">${reviewer.answers[key].length} characters</span></span></label>`).join("")}</div>
+    <div class="ratings-grid">${RATING_KEYS.map((key) => `<div class="rating-row"><span class="rating-label">${RATING_LABELS[key]}</span><div class="star-input" role="radiogroup" aria-label="${escapeHtml(RATING_LABELS[key])}">${[5,4,3,2,1].map((rating) => `<input data-path="reviewers.${index}.ratings.${key}" id="r${number}-${key}-${rating}" name="r${number}-${key}" type="radio" value="${rating}" ${reviewer.ratings[key] === rating ? "checked" : ""}><label for="r${number}-${key}-${rating}" aria-label="${rating} star${rating === 1 ? "" : "s"}"></label>`).join("")}</div></div>`).join("")}</div>
+    <label class="textarea-field"><span>Reviewer comment</span><textarea data-path="reviewers.${index}.comment" rows="10" placeholder="Enter this reviewer’s complete feedback...">${escapeHtml(reviewer.comment)}</textarea><span class="field-meta"><span data-count="reviewers.${index}.comment">${reviewer.comment.length} characters</span></span></label>
     <span class="field-meta"><span>Combined reviewer box</span><span data-fit="reviewer-${index}" class="fit-badge">Fits</span></span>
   </fieldset>`;
 }
@@ -93,7 +82,7 @@ function averageRatings() {
 function roundedHalf(value) { return Math.round(Number(value) * 2) / 2; }
 function starsHtml(value) {
   const rounded = roundedHalf(value);
-  return Array.from({ length: 5 }, (_, index) => index + 1 <= rounded ? "<span>★</span>" : index + .5 === rounded ? '<span class="star-half">★</span>' : '<span class="star-empty">★</span>').join("");
+  return Array.from({ length: 5 }, (_, index) => index + 1 <= rounded ? "<span></span>" : index + .5 === rounded ? '<span class="star-half"></span>' : '<span class="star-empty"></span>').join("");
 }
 
 function createMeasureDoc() { return new window.jspdf.jsPDF({ unit: "pt", format: "letter", orientation: "portrait" }); }
@@ -106,8 +95,8 @@ function calculateFit() {
   const summaryHeight = summaryLines * 15.75;
   doc.setFontSize(8.6);
   const reviewers = report.reviewers.map((reviewer) => {
-    const lines = QUESTION_KEYS.reduce((sum, key) => sum + lineCount(doc, reviewer.answers[key], PDF.reviewerTextWidth), 0);
-    const height = lines * 11.35 + QUESTION_KEYS.length * 17;
+    const lines = lineCount(doc, reviewer.comment, PDF.reviewerTextWidth);
+    const height = lines * 11.35;
     return height <= PDF.reviewerTextHeight;
   });
   return { summary: summaryHeight <= PDF.summaryTextHeight, reviewers };
@@ -119,7 +108,7 @@ function missingRequiredFields() {
   report.reviewers.forEach((reviewer) => {
     if (!String(reviewer.name || "").trim()) missing += 1;
     RATING_KEYS.forEach((key) => { if (Number(reviewer.ratings[key]) < 1) missing += 1; });
-    QUESTION_KEYS.forEach((key) => { if (!String(reviewer.answers[key] || "").trim()) missing += 1; });
+    if (!String(reviewer.comment || "").trim()) missing += 1;
   });
   if (!String(report.consultantSummary || "").trim()) missing += 1;
   return missing;
@@ -147,12 +136,12 @@ function updateFitUi() {
 function reportHeader(pageTitle) {
   return `<header class="report-header"><img src="./assets/logo-7sage-b2r2.svg" alt="7Sage"><h3>${pageTitle}</h3></header>`;
 }
-function footerHtml(page) { return `<p class="page-footer">7Sage College Admissions · Committee Review · Page ${page} of 2</p>`; }
+function footerHtml(page) { return `<p class="page-footer">7Sage College Prep · Committee Review · Page ${page} of 2</p>`; }
 function previewHtml() {
   const averages = averageRatings();
   const meta = [["Student", report.student.name], [report.student.testType, report.student.testScore], ["GPA", report.student.gpa], ["School", report.student.targetSchool]];
   const pageOne = `<article class="pdf-page">${reportHeader("Admissions Committee Review")}<div class="page-body"><div class="meta-grid">${meta.map(([label,value]) => `<div class="meta-card"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`).join("")}</div><h4 class="ratings-title">Committee Ratings</h4><div class="rating-cards">${RATING_KEYS.map((key) => `<div class="rating-card"><p>${RATING_LABELS[key]}</p><div class="stars" aria-label="${roundedHalf(averages[key])} out of 5">${starsHtml(averages[key])}</div></div>`).join("")}</div><section class="summary-box"><div class="box-title">Overall Summary</div><div class="summary-copy">${escapeHtml(report.consultantSummary) || "Add the consultant’s overall summary in the editor."}</div></section></div>${footerHtml(1)}</article>`;
-  const pageTwo = `<article class="pdf-page page-two">${reportHeader("Reviewer Perspectives")}<div class="page-body">${report.reviewers.map((reviewer) => `<section class="review-box"><h3 class="reviewer-name">${escapeHtml(reviewer.name)}</h3><div class="review-copy">${QUESTION_KEYS.map((key) => `<h4>${QUESTION_LABELS[key]}</h4><p>${escapeHtml(reviewer.answers[key])}</p>`).join("")}</div></section>`).join("")}</div>${footerHtml(2)}</article>`;
+  const pageTwo = `<article class="pdf-page page-two">${reportHeader("Reviewer Perspectives")}<div class="page-body">${report.reviewers.map((reviewer) => `<section class="review-box"><h3 class="reviewer-name">${escapeHtml(reviewer.name)}</h3><div class="review-copy"><p>${escapeHtml(reviewer.comment)}</p></div></section>`).join("")}</div>${footerHtml(2)}</article>`;
   return pageOne + pageTwo;
 }
 function render() { previewPages.innerHTML = previewHtml(); updateFitUi(); }
@@ -166,7 +155,7 @@ function drawHeader(doc, title, logo) {
 }
 function drawFooter(doc, page) {
   doc.setDrawColor(226,230,235); doc.line(PDF.margin,768,PDF.width-PDF.margin,768);
-  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(108,117,130); doc.text(`7Sage College Admissions · Committee Review · Page ${page} of 2`,PDF.width/2,780,{align:"center"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(108,117,130); doc.text(`7Sage College Prep · Committee Review · Page ${page} of 2`,PDF.width/2,780,{align:"center"});
 }
 function drawStarPath(doc, x, y, radius, color, fraction) {
   const points = Array.from({length:10},(_,index)=>{const angle=-Math.PI/2+index*Math.PI/5;const r=index%2===0?radius:radius*.43;return [x+Math.cos(angle)*r,y+Math.sin(angle)*r];});
@@ -185,7 +174,7 @@ function drawPageOne(doc, logo) {
   drawHeader(doc,"Admissions Committee Review",logo);
   const meta = [["STUDENT",report.student.name,148],[report.student.testType,report.student.testScore,72],["GPA",report.student.gpa,72],["SCHOOL",report.student.targetSchool,216]];
   let x=PDF.margin; const y=76;
-  meta.forEach(([label,value,width])=>{doc.setFillColor(255);doc.setDrawColor(213,218,226);doc.roundedRect(x,y,width,38,7,7,"FD");doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(104,115,134);doc.text(label,x+8,y+12);doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(27,32,38);const clipped=doc.splitTextToSize(String(value),width-16)[0]||"";doc.text(clipped,x+8,y+27);x+=width+8;});
+  meta.forEach(([label,value,width])=>{doc.setFillColor(255);doc.setDrawColor(213,218,226);doc.roundedRect(x,y,width,38,7,7,"FD");doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(104,115,134);doc.text(label,x+8,y+12);doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(0,0,0);const clipped=doc.splitTextToSize(String(value),width-16)[0]||"";doc.text(clipped,x+8,y+27);x+=width+8;});
   doc.setFont("times","bold");doc.setFontSize(13);doc.setTextColor(21,35,60);doc.text("Committee Ratings",PDF.width/2,142,{align:"center"});
   const averages=averageRatings(); const cards=[[40,158],[310,158],[40,222],[310,222]];
   RATING_KEYS.forEach((key,index)=>{const [cx,cy]=cards[index];doc.setFillColor(255);doc.setDrawColor(213,218,226);doc.roundedRect(cx,cy,262,54,8,8,"FD");doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(27,32,38);doc.text(RATING_LABELS[key],cx+14,cy+18);drawStars(doc,averages[key],cx+22,cy+38);});
@@ -194,7 +183,7 @@ function drawPageOne(doc, logo) {
 }
 function drawPageTwo(doc, logo) {
   drawHeader(doc,"Reviewer Perspectives",logo); doc.setFont("helvetica","normal");doc.setFontSize(8.6);
-  report.reviewers.forEach((reviewer,index)=>{const x=40,y=73+index*226,w=532,h=214;doc.setFillColor(255);doc.setDrawColor(207,214,223);doc.roundedRect(x,y,w,h,9,9,"FD");doc.setFillColor(237,243,250);doc.roundedRect(x,y,w,27,9,9,"F");doc.rect(x,y+13,w,14,"F");doc.setFont("times","bold");doc.setFontSize(12);doc.setTextColor(21,35,60);doc.text(reviewer.name,x+11,y+18);let cursor=y+42;QUESTION_KEYS.forEach((key)=>{doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(45,132,160);doc.text(QUESTION_LABELS[key],x+11,cursor);cursor+=10;doc.setFont("helvetica","normal");doc.setFontSize(8.6);doc.setTextColor(27,32,38);const lines=doc.splitTextToSize(reviewer.answers[key],484);doc.text(lines,x+11,cursor,{lineHeightFactor:1.32});cursor+=lines.length*11.35+7;});}); drawFooter(doc,2);
+  report.reviewers.forEach((reviewer,index)=>{const x=40,y=73+index*226,w=532,h=214;doc.setFillColor(255);doc.setDrawColor(207,214,223);doc.roundedRect(x,y,w,h,9,9,"FD");doc.setFillColor(237,243,250);doc.roundedRect(x,y,w,27,9,9,"F");doc.rect(x,y+13,w,14,"F");doc.setFont("times","bold");doc.setFontSize(12);doc.setTextColor(21,35,60);doc.text(reviewer.name,x+11,y+18);doc.setFont("helvetica","normal");doc.setFontSize(8.6);doc.setTextColor(27,32,38);const lines=doc.splitTextToSize(reviewer.comment,484);doc.text(lines,x+11,y+43,{lineHeightFactor:1.32});}); drawFooter(doc,2);
 }
 async function logoPng() {
   return new Promise((resolve)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=240;canvas.height=81;const ctx=canvas.getContext("2d");ctx.drawImage(image,0,0,240,81);resolve(canvas.toDataURL("image/png"));};image.onerror=()=>resolve(null);image.src="./assets/logo-7sage-b2r2.svg";});
