@@ -157,14 +157,34 @@ function drawFooter(doc, page) {
   doc.setDrawColor(226,230,235); doc.line(PDF.margin,768,PDF.width-PDF.margin,768);
   doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(108,117,130); doc.text(`7Sage College Prep · Committee Review · Page ${page} of 2`,PDF.width/2,780,{align:"center"});
 }
-function drawStarPath(doc, x, y, radius, color, fraction) {
-  const points = Array.from({length:10},(_,index)=>{const angle=-Math.PI/2+index*Math.PI/5;const r=index%2===0?radius:radius*.43;return [x+Math.cos(angle)*r,y+Math.sin(angle)*r];});
+function fillPolygon(doc, points, color) {
+  if (points.length < 3) return;
   const lines = points.slice(1).map((point,index)=>[point[0]-points[index][0],point[1]-points[index][1]]);
-  doc.setDrawColor(205,211,220); doc.setFillColor(213,218,226); doc.lines(lines,points[0][0],points[0][1],[1,1],"FD",true);
-  if (fraction > 0) {
-    doc.saveGraphicsState(); doc.rect(x-radius-1,y-radius-1,(radius*2+2)*fraction,radius*2+2).clip().discardPath();
-    doc.setDrawColor(...color); doc.setFillColor(...color); doc.lines(lines,points[0][0],points[0][1],[1,1],"FD",true); doc.restoreGraphicsState();
+  doc.setFillColor(...color);
+  doc.lines(lines,points[0][0],points[0][1],[1,1],"F",true);
+}
+function clipPolygonAtX(points, maxX) {
+  const clipped = [];
+  for (let index=0;index<points.length;index+=1) {
+    const current=points[index];
+    const next=points[(index+1)%points.length];
+    const currentInside=current[0]<=maxX;
+    const nextInside=next[0]<=maxX;
+    const intersection=()=>{
+      const ratio=(maxX-current[0])/(next[0]-current[0]);
+      return [maxX,current[1]+(next[1]-current[1])*ratio];
+    };
+    if (currentInside&&nextInside) clipped.push(next);
+    else if (currentInside&&!nextInside) clipped.push(intersection());
+    else if (!currentInside&&nextInside) clipped.push(intersection(),next);
   }
+  return clipped;
+}
+function drawStarPath(doc, x, y, radius, color, fraction) {
+  const points=Array.from({length:10},(_,index)=>{const angle=-Math.PI/2+index*Math.PI/5;const r=index%2===0?radius:radius*.43;return [x+Math.cos(angle)*r,y+Math.sin(angle)*r];});
+  fillPolygon(doc,points,[213,218,226]);
+  if (fraction>=1) fillPolygon(doc,points,color);
+  else if (fraction>0) fillPolygon(doc,clipPolygonAtX(points,x-radius+radius*2*fraction),color);
 }
 function drawStars(doc, value, x, y) {
   const rounded = roundedHalf(value);
